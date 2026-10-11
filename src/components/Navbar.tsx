@@ -27,8 +27,7 @@ import {
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
-import { CommercializationModal } from './CommercializationModal';
-import { getStoredUser, getActiveLicenseTier } from '../services/firebaseAuth';
+import { useAuth } from '../context/AuthContext';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -43,11 +42,9 @@ export const Navbar: React.FC = () => {
     setIsSearchOpen
   } = useCustomization();
 
+  const { user: authUser, subscriptionTier: licenseTier, setIsCommercializeModalOpen } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'disciplines' | 'tools' | 'resources' | null>(null);
-  const [isCommercialModalOpen, setIsCommercialModalOpen] = useState(false);
-  const authUser = getStoredUser();
-  const licenseTier = getActiveLicenseTier();
 
   // Close dropdowns on outside click or navigation
   const navRef = useRef<HTMLDivElement>(null);
@@ -423,7 +420,7 @@ export const Navbar: React.FC = () => {
 
           {/* Commercialization & Google Account Trigger */}
           <button
-            onClick={() => setIsCommercialModalOpen(true)}
+            onClick={() => setIsCommercializeModalOpen(true)}
             className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               authUser
                 ? 'bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-200'
@@ -537,7 +534,7 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
-                setIsCommercialModalOpen(true);
+                setIsCommercializeModalOpen(true);
               }}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors cursor-pointer"
             >
@@ -568,13 +565,6 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Commercialization & Google Auth Modal */}
-      <CommercializationModal
-        isOpen={isCommercialModalOpen}
-        onClose={() => setIsCommercialModalOpen(false)}
-        onOpenBriefing={() => setIsBriefingModalOpen(true)}
-      />
     </header>
   );
 };

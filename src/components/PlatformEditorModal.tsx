@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { PlatformShowcase, ArchitectureDesignItem } from '../types/siteData';
 import { resolveMediaUrl } from '../data/mediaAssets';
+import { uploadAssetImage, UploadResult } from '../services/storageService';
 import {
   X,
   Upload,
@@ -17,13 +18,15 @@ import {
   Eye,
   EyeOff,
   Sliders,
-  Maximize2
+  Maximize2,
+  Cloud,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export const PlatformEditorModal: React.FC = () => {
   const { siteConfig, activeEditPlatformId, setActiveEditPlatformId, updatePlatformShowcase } = useCustomization();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const subsectionFileInputRef = useRef<HTMLInputElement>(null);
 
   const currentPlatform = siteConfig.platformShowcases?.find(p => p.id === activeEditPlatformId);
 
@@ -41,6 +44,8 @@ export const PlatformEditorModal: React.FC = () => {
   const [designs, setDesigns] = useState<ArchitectureDesignItem[]>([]);
   const [activeEditingDesignIndex, setActiveEditingDesignIndex] = useState<number | null>(null);
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<{ msg: string; source: string } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -63,35 +68,51 @@ export const PlatformEditorModal: React.FC = () => {
 
   if (!activeEditPlatformId || !currentPlatform) return null;
 
-  // Upload platform main image directly from local device
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload platform main image directly from local machine using Firebase/Supabase Storage + Base64 fallback
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setImageUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadFeedback(null);
+    try {
+      const result: UploadResult = await uploadAssetImage(file, 'platforms');
+      setImageUrl(result.url);
+      setUploadFeedback({
+        msg: `Asset successfully uploaded (${(file.size / 1024).toFixed(1)} KB)!`,
+        source: result.source.toUpperCase()
+      });
+      setTimeout(() => setUploadFeedback(null), 4000);
+    } catch (err: any) {
+      console.error('File upload error:', err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  // Upload subsection diagram directly from local device
-  const handleSubsectionFileUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  // Upload subsection diagram directly from local machine using Firebase/Supabase Storage + Base64 fallback
+  const handleSubsectionFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setDesigns(prev => {
-            const next = [...prev];
-            next[index] = { ...next[index], imageUrl: reader.result as string };
-            return next;
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadFeedback(null);
+    try {
+      const result: UploadResult = await uploadAssetImage(file, 'designs');
+      setDesigns(prev => {
+        const next = [...prev];
+        next[index] = { ...next[index], imageUrl: result.url };
+        return next;
+      });
+      setUploadFeedback({
+        msg: `Subsection diagram uploaded (${(file.size / 1024).toFixed(1)} KB)!`,
+        source: result.source.toUpperCase()
+      });
+      setTimeout(() => setUploadFeedback(null), 4000);
+    } catch (err: any) {
+      console.error('Subsection upload error:', err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -197,7 +218,7 @@ export const PlatformEditorModal: React.FC = () => {
                   {enabled ? 'PUBLIC ACTIVE' : 'DISABLED'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Modify discipline details, enable/disable status, and manage subsection architecture diagrams</p>
+              <p className="text-xs text-slate-400">Modify discipline details, upload images from your local machine to cloud storage, and configure subsection architecture diagrams</p>
             </div>
           </div>
           <button
@@ -208,6 +229,19 @@ export const PlatformEditorModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Global Upload Feedback Toast */}
+        {uploadFeedback && (
+          <div className="p-3 rounded-xl bg-cyan-950/80 border border-cyan-500/50 text-cyan-200 text-xs flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>{uploadFeedback.msg}</span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-900 text-cyan-300 uppercase font-bold">
+              Stored via {uploadFeedback.source}
+            </span>
+          </div>
+        )}
 
         {/* Tab Switcher: General vs Subsections */}
         <div className="flex items-center gap-2 border-b border-slate-800 pb-3 shrink-0">
@@ -347,18 +381,18 @@ export const PlatformEditorModal: React.FC = () => {
                         />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <label className="text-slate-400">Architecture Image Path or Local Device Upload</label>
+                        <label className="text-slate-400">Architecture Image Path or Cloud Storage URL</label>
                         <input
                           type="text"
                           value={imageUrl}
                           onChange={e => setImageUrl(e.target.value)}
-                          placeholder="/assets/images/... or data:image/..."
+                          placeholder="/assets/images/... or https://firebasestorage.googleapis.com/..."
                           className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
                         />
                       </div>
                     </div>
 
-                    {/* Direct Local Device Upload Button */}
+                    {/* Direct Local Device Upload Button with Storage Service Integration */}
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -366,15 +400,20 @@ export const PlatformEditorModal: React.FC = () => {
                       accept="image/*"
                       className="hidden"
                     />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
+                        disabled={isUploading}
                         onClick={() => fileInputRef.current?.click()}
                         className="py-2 px-3 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 rounded-lg text-cyan-300 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Upload Image Directly from Local Device</span>
+                        <span>{isUploading ? 'Uploading to Storage...' : 'Upload Image from Local Machine'}</span>
                       </button>
+                      <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <Cloud className="w-3 h-3 text-cyan-500" />
+                        <span>Saves to Firebase & Supabase Storage with local backup</span>
+                      </span>
                     </div>
                   </div>
                 ) : (
@@ -448,86 +487,77 @@ export const PlatformEditorModal: React.FC = () => {
                   value={techTags.join(', ')}
                   onChange={e => setTechTags(e.target.value.split(',').map(s => s.trim()))}
                   placeholder="Tag1, Tag2, Tag3"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white text-xs"
                 />
               </div>
             </div>
           ) : (
             /* Subsections Management Tab */
-            <div className="space-y-5">
-              <div className="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div>
-                  <h4 className="text-sm font-bold text-white">
-                    Subsections & Architecture Modules ({designs.length})
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Enable, disable, update diagrams, or upload high-res images directly from your device.
-                  </p>
+                  <h4 className="font-bold text-white text-xs">Architecture Subsections & Topology Blueprints</h4>
+                  <p className="text-slate-400 text-[11px]">Subsections render inside this platform's dedicated discipline landing page</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddNewDesign}
-                  className="px-3.5 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                  className="px-3 py-1.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer text-xs shadow-sm"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Architecture Subsection</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Topology Module</span>
                 </button>
               </div>
 
-              {/* List of Subsections */}
               <div className="space-y-4">
                 {designs.map((design, dIdx) => {
-                  const isSubsectionEnabled = design.enabled !== false;
+                  const isEnabled = design.enabled !== false;
                   return (
                     <div
                       key={design.id || dIdx}
-                      className={`p-4 rounded-xl border transition-all space-y-4 ${
-                        isSubsectionEnabled
+                      className={`p-4 rounded-xl border space-y-3 transition-colors ${
+                        isEnabled
                           ? 'bg-slate-950/80 border-slate-800'
-                          : 'bg-slate-950/40 border-rose-950/60 opacity-80'
+                          : 'bg-slate-950/40 border-rose-900/40 opacity-70'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60">
-                            Module 0{dIdx + 1}
-                          </span>
-                          <span className="font-bold text-white text-xs truncate max-w-xs">
-                            {design.title}
+                          <span className="font-mono text-cyan-400 font-bold">#{dIdx + 1}</span>
+                          <span className="font-bold text-white text-xs">{design.title}</span>
+                          <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+                            isEnabled ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-rose-950 text-rose-300 border-rose-800'
+                          }`}>
+                            {isEnabled ? 'ACTIVE' : 'DISABLED'}
                           </span>
                         </div>
-
                         <div className="flex items-center gap-2">
-                          {/* Enable/Disable Toggle Switch for Subsection */}
                           <button
                             type="button"
                             onClick={() => handleToggleDesignEnabled(dIdx)}
-                            className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
-                              isSubsectionEnabled
-                                ? 'bg-emerald-950 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900'
-                                : 'bg-rose-950 border-rose-500/50 text-rose-300 hover:bg-rose-900'
+                            className={`p-1.5 rounded-md border text-xs cursor-pointer ${
+                              isEnabled
+                                ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700'
+                                : 'bg-rose-950 hover:bg-rose-900 text-rose-300 border-rose-800'
                             }`}
-                            title={isSubsectionEnabled ? 'Click to disable subsection' : 'Click to enable subsection'}
+                            title={isEnabled ? 'Disable subsection' : 'Enable subsection'}
                           >
-                            {isSubsectionEnabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                            <span>{isSubsectionEnabled ? 'Active' : 'Disabled'}</span>
+                            {isEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                           </button>
-
                           <button
                             type="button"
                             onClick={() => handleDeleteDesign(dIdx)}
-                            className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
-                            title="Delete this subsection"
+                            className="p-1.5 rounded-md bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-800 cursor-pointer"
+                            title="Delete subsection"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Fields: Title, Badge, Description */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="sm:col-span-2 space-y-1">
-                          <label className="text-slate-400 text-[11px]">Subsection Title</label>
+                          <label className="text-slate-400 text-[11px]">Module Title</label>
                           <input
                             type="text"
                             value={design.title}
@@ -536,7 +566,7 @@ export const PlatformEditorModal: React.FC = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-slate-400 text-[11px]">Badge / Tag</label>
+                          <label className="text-slate-400 text-[11px]">Badge Tag</label>
                           <input
                             type="text"
                             value={design.badge || ''}
@@ -575,14 +605,14 @@ export const PlatformEditorModal: React.FC = () => {
                               type="text"
                               value={design.imageUrl}
                               onChange={e => handleUpdateDesignField(dIdx, 'imageUrl', e.target.value)}
-                              placeholder="/assets/images/... or data:image/..."
+                              placeholder="/assets/images/... or https://firebasestorage.googleapis.com/..."
                               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
                             />
 
                             <div>
                               <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-semibold cursor-pointer transition-colors">
                                 <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>Upload Image Directly from Device</span>
+                                <span>Upload Image from Local Machine</span>
                                 <input
                                   type="file"
                                   accept="image/*"

@@ -12,6 +12,7 @@ import { SearchCommandModal } from './components/SearchCommandModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
 import { CommercializeModal } from './components/CommercializeModal';
+import { AuthErrorBoundary } from './components/AuthErrorBoundary';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -252,19 +253,23 @@ const MainLayout: React.FC = () => {
       <SearchCommandModal />
       <AdminLoginModal />
       <WatermarkSettingsModal />
-      <CommercializeModal />
+      <AuthErrorBoundary fallbackTitle="Commercialization & Authentication Portal">
+        <CommercializeModal />
+      </AuthErrorBoundary>
     </div>
   );
 };
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CustomizationProvider>
-        <BrowserRouter>
-          <MainLayout />
-        </BrowserRouter>
-      </CustomizationProvider>
-    </AuthProvider>
+    <AuthErrorBoundary fallbackTitle="Zaboraa Enterprise Cloud Workspace">
+      <AuthProvider>
+        <CustomizationProvider>
+          <BrowserRouter>
+            <MainLayout />
+          </BrowserRouter>
+        </CustomizationProvider>
+      </AuthProvider>
+    </AuthErrorBoundary>
   );
 }
