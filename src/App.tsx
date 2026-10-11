@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -259,6 +260,7 @@ export default function App() {
     <CustomizationProvider>
       <BrowserRouter>
         <MainLayout />
+        <Analytics />
       </BrowserRouter>
     </CustomizationProvider>
   );
