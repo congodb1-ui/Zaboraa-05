@@ -150,6 +150,9 @@ export const DRPlannerPage: React.FC = () => {
 
     const hostReductionNodes = Math.max(0, fullSddcNodes - standbyNodes);
     const hostReductionPercent = Math.round((hostReductionNodes / fullSddcNodes) * 100);
+    const nodeCostPerMonth = 2500;
+    const monthlyOpexSavings = hostReductionNodes * nodeCostPerMonth;
+    const threeYearTcoSavings = monthlyOpexSavings * 36;
 
     // Initial Full Seeding Time
     const compressedTotalMb = totalStorageGB * (1 - engine.compressionEfficiency / 100) * 8 * 1024;
@@ -167,6 +170,7 @@ export const DRPlannerPage: React.FC = () => {
     return {
       effectiveRpo,
       dailyChangeGB: Math.round(dailyChangeGB),
+      dailyChangeVolumeGB: Math.round(dailyChangeGB),
       compressedDailyGB: Math.round(compressedDailyGB),
       deltaPerIntervalGB: Math.round(deltaPerIntervalGB * 10) / 10,
       requiredBandwidthMbps,
@@ -178,6 +182,11 @@ export const DRPlannerPage: React.FC = () => {
       standbyNodes,
       hostReductionNodes,
       hostReductionPercent,
+      nodeCostPerMonth,
+      monthlyOpexSavings,
+      threeYearTcoSavings,
+      strategyRtoMin: hostSpinupMinutes,
+      vmBootRtoMin: dbRecoveryMinutes + appRecoveryMinutes,
       initialSeedHours,
       initialSeedDays,
       totalEstimatedRtoMin,
@@ -225,7 +234,7 @@ export const DRPlannerPage: React.FC = () => {
     XLSX.writeFile(wb, `Zaboraa_DR_Assessment_${engine.id.toUpperCase()}.xlsx`);
   };
 
-  // Export Formal Branded PDF report using jsPDF
+  // Export Formal Branded 2-Page Executive PDF report using jsPDF
   const handleExportPdf = () => {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -236,9 +245,13 @@ export const DRPlannerPage: React.FC = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 16;
-    let y = 18;
+    const contentWidth = pageWidth - (margin * 2);
 
-    // Header Background Accent Bar
+    // ==========================================
+    // PAGE 1: EXECUTIVE KPI SUMMARY & TCO MODEL
+    // ==========================================
+    
+    // Header Bar
     doc.setFillColor(15, 23, 42); // Slate 900
     doc.rect(0, 0, pageWidth, 28, 'F');
     doc.setFillColor(6, 182, 212); // Cyan 500
@@ -252,183 +265,364 @@ export const DRPlannerPage: React.FC = () => {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184); // Slate 400
-    doc.text('ENTERPRISE DISASTER RECOVERY & BCDR ARCHITECTURAL DOSSIER', margin, 18);
+    doc.setTextColor(148, 163, 184);
+    doc.text('HYBRID CLOUD ARCHITECTURE & DISASTER RECOVERY ADVISORY', margin, 18);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(6, 182, 212);
-    doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin - 50, 12);
+    doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin - 55, 12);
     doc.setTextColor(148, 163, 184);
-    doc.text('ARCHITECT: Wasim Sayyed', pageWidth - margin - 50, 18);
+    doc.text('LEAD ARCHITECT: Wasim Sayyed', pageWidth - margin - 55, 18);
 
-    y = 38;
+    let y = 37;
 
-    // Title Section
+    // Document Title Section
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(15);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${engine.name} Resilience Assessment`, margin, y);
-    y += 6;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Deployment Strategy: ${deploymentStrategy.toUpperCase()} · Failover Network: ${failoverNetwork === 'stretchedL2' ? 'NSX-T Stretched Layer 2' : 'Routed Tier-1 Gateways'}`, margin, y);
-    y += 10;
-
-    // Executive Summary Box
-    doc.setFillColor(241, 245, 249); // Slate 100
-    doc.setDrawColor(203, 213, 225); // Slate 300
-    doc.roundedRect(margin, y, pageWidth - (margin * 2), 24, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(14, 116, 144); // Cyan 700
-    doc.text('EXECUTIVE HIGHLIGHTS & FINANCIAL RESILIENCY VERDICT', margin + 4, y + 6);
+    doc.text(`${engine.name} - Executive Disaster Recovery Dossier`, margin, y);
+    y += 5.5;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Orchestration Model: ${deploymentStrategy.toUpperCase()} · Network Failover: ${failoverNetwork === 'stretchedL2' ? 'NSX-T Stretched Layer-2 (Zero Re-IP)' : 'Automated Routed Tier-1 DNS Failover'}`, margin, y);
+    y += 8;
+
+    // Executive Summary Highlight Callout
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(6, 182, 212);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'FD');
+    doc.setLineWidth(0.2);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(14, 116, 144);
+    doc.text('EXECUTIVE HIGHLIGHTS & FINANCIAL RESILIENCY VERDICT', margin + 4, y + 6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
     doc.setTextColor(30, 41, 59);
     doc.text(
-      `Deploying ${engine.name} under a ${deploymentStrategy} model reduces standby compute host sprawl by ${calculations.hostReductionNodes} nodes (${calculations.hostReductionPercent}% reduction), slashing non-production OPEX by $${calculations.monthlyOpexSavings.toLocaleString()}/mo ($${calculations.threeYearTcoSavings.toLocaleString()} over 36 months).`,
+      `Deploying ${engine.name} under a ${deploymentStrategy} model reduces standby compute host sprawl by ${calculations.hostReductionNodes} nodes (${calculations.hostReductionPercent}% reduction), slashing non-production OPEX by $${calculations.monthlyOpexSavings.toLocaleString()}/mo ($${calculations.threeYearTcoSavings.toLocaleString()} over 36 months). WAN replication requires ${calculations.requiredBandwidthMbps} Mbps, with calculated recovery point achievable within ${calculations.effectiveRpo} minutes.`,
       margin + 4,
-      y + 12,
-      { maxWidth: pageWidth - (margin * 2) - 8 }
+      y + 11.5,
+      { maxWidth: contentWidth - 8 }
     );
-    y += 32;
+    y += 29;
 
-    // KPI Metrics Matrix (4 Grid Cards)
-    const cardWidth = (pageWidth - (margin * 2) - 9) / 4;
-    const cardHeight = 22;
+    // KPI Metric Cards (6 Grid Cards: 3 columns x 2 rows)
+    const cardGap = 3.5;
+    const cardW = (contentWidth - (cardGap * 2)) / 3;
+    const cardH = 19;
 
-    const kpis = [
-      { label: 'PROTECTED VMS', value: `${protectedVMs} VMs`, sub: `${protectedStorageTB} TB storage` },
-      { label: 'EFFECTIVE RPO', value: `${calculations.effectiveRpo} Minutes`, sub: calculations.isBandwidthAdequate ? 'Bandwidth PASS' : 'WAN constrained' },
-      { label: 'ESTIMATED RTO', value: `${calculations.totalEstimatedRtoMin} Minutes`, sub: 'Automated boot' },
-      { label: 'MONTHLY OPEX SAVINGS', value: `$${calculations.monthlyOpexSavings.toLocaleString()}`, sub: 'Host reduction' }
+    const kpiCards = [
+      { label: 'PROTECTED WORKLOAD', val: `${protectedVMs} VMs`, sub: `${protectedStorageTB} TB storage footprint` },
+      { label: 'EFFECTIVE RPO SLA', val: `${calculations.effectiveRpo} Minutes`, sub: calculations.isBandwidthAdequate ? 'WAN SLA PASS' : 'WAN constrained' },
+      { label: 'ESTIMATED RTO SLA', val: `${calculations.totalEstimatedRtoMin} Minutes`, sub: 'Automated runbook boot' },
+      { label: 'STANDBY SDDC NODES', val: `${calculations.standbyNodes} Hosts`, sub: `${calculations.hostReductionNodes} hosts eliminated (${calculations.hostReductionPercent}%)` },
+      { label: 'MONTHLY OPEX SAVINGS', val: `$${calculations.monthlyOpexSavings.toLocaleString()}/mo`, sub: 'Standby footprint reduction' },
+      { label: '3-YEAR TCO SAVINGS', val: `$${calculations.threeYearTcoSavings.toLocaleString()}`, sub: 'Direct host licensing & compute' }
     ];
 
-    kpis.forEach((kpi, i) => {
-      const cardX = margin + (i * (cardWidth + 3));
+    kpiCards.forEach((kpi, idx) => {
+      const col = idx % 3;
+      const row = Math.floor(idx / 3);
+      const cx = margin + (col * (cardW + cardGap));
+      const cy = y + (row * (cardH + cardGap));
+
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(cardX, y, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+      doc.roundedRect(cx, cy, cardW, cardH, 1.5, 1.5, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, cardX + 3, y + 5);
+      doc.text(kpi.label, cx + 3, cy + 4.5);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
-      doc.text(kpi.value, cardX + 3, y + 12);
+      doc.text(kpi.val, cx + 3, cy + 10.5);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(71, 85, 105);
-      doc.text(kpi.sub, cardX + 3, y + 18);
+      doc.text(kpi.sub, cx + 3, cy + 15.5);
     });
 
-    y += cardHeight + 10;
+    y += (cardH * 2) + cardGap + 8;
 
-    // Table 1: Technical Replication & Bandwidth Parameters
+    // Table 1: Financial & Host Comparison
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('1. Replication Bandwidth & Storage Footprint Analysis', margin, y);
-    y += 5;
+    doc.text('1. Standby Compute Infrastructure & 36-Month Cost Modeling', margin, y);
+    y += 4.5;
+
+    const costRows = [
+      ['Traditional Active/Active SDDC', `${calculations.fullSddcNodes} Hosts`, `$${(calculations.fullSddcNodes * calculations.nodeCostPerMonth).toLocaleString()}/mo`, `$${(calculations.fullSddcNodes * calculations.nodeCostPerMonth * 36).toLocaleString()}`, 'Baseline Standard'],
+      ['Recommended Pilot Light Strategy', `${calculations.standbyNodes} Hosts`, `$${(calculations.standbyNodes * calculations.nodeCostPerMonth).toLocaleString()}/mo`, `$${(calculations.standbyNodes * calculations.nodeCostPerMonth * 36).toLocaleString()}`, `$${calculations.monthlyOpexSavings.toLocaleString()}/mo savings`],
+      ['Elastic Storage-Only Datastore', '0 Host Compute', '$1,800/mo', '$64,800', 'Decoupled ANF/FSx mount']
+    ];
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text('RECOVERY ARCHITECTURE TIER', margin + 3, y + 4);
+    doc.text('STANDBY NODES', margin + 65, y + 4);
+    doc.text('EST. MONTHLY OPEX', margin + 100, y + 4);
+    doc.text('36-MONTH TCO', margin + 135, y + 4);
+    doc.text('VARIANCE', margin + 160, y + 4);
+    y += 5.5;
+
+    costRows.forEach((row, idx) => {
+      doc.setFillColor(idx % 2 === 1 ? 248 : 255, idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 252 : 255);
+      doc.rect(margin, y, contentWidth, 5, 'F');
+      doc.setFont('helvetica', idx === 1 ? 'bold' : 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(idx === 1 ? 14 : 30, idx === 1 ? 116 : 41, idx === 1 ? 144 : 59);
+      doc.text(row[0], margin + 3, y + 3.8);
+      doc.text(row[1], margin + 65, y + 3.8);
+      doc.text(row[2], margin + 100, y + 3.8);
+      doc.text(row[3], margin + 135, y + 3.8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(row[4], margin + 160, y + 3.8);
+      y += 5;
+    });
+
+    y += 7;
+
+    // Table 2: Technical Replication & Bandwidth Parameters
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('2. Replication Bandwidth & Storage Footprint Analysis', margin, y);
+    y += 4.5;
 
     const techRows = [
-      ['Target RPO Window', `${calculations.effectiveRpo} Minutes`, 'Engine Baseline Constraints'],
-      ['Protected Storage Footprint', `${protectedStorageTB} TB`, 'Source VMDK Data Volume'],
-      ['Daily Data Change Rate', `${dailyChangeRatePercent}%`, 'Operational Delta Growth'],
-      ['24-Hour Transferred Volume', `${calculations.dailyChangeVolumeGB.toFixed(1)} GB`, 'Pre-compression replication payload'],
-      ['Effective Storage Throughput', `${calculations.requiredBandwidthMbps} Mbps`, 'Dedicated minimum WAN bandwidth'],
-      ['Configured WAN Circuit', `${wanBandwidthMbps} Mbps`, calculations.isBandwidthAdequate ? 'Adequate (SLA Passed)' : 'Undersized WAN warning'],
-      ['CDP Journal Storage Capacity', `${calculations.journalOverheadTB} TB`, `${journalRetentionDays}-day continuous checkpoint buffer`]
+      ['Target RPO Window', `${calculations.effectiveRpo} Minutes`, 'Engine baseline replication window'],
+      ['Protected Storage Footprint', `${protectedStorageTB} TB`, 'Active primary VMDK source capacity'],
+      ['Daily Operational Change Rate', `${dailyChangeRatePercent}%`, 'Operational 24h delta delta blocks'],
+      ['24-Hour Transferred Delta Volume', `${calculations.dailyChangeVolumeGB.toFixed(1)} GB`, 'Payload across hybrid WAN link'],
+      ['Required Continuous Bandwidth', `${calculations.requiredBandwidthMbps} Mbps`, 'Minimum dedicated pipe for target RPO'],
+      ['Configured WAN Circuit', `${wanBandwidthMbps} Mbps`, calculations.isBandwidthAdequate ? 'ADEQUATE (SLA Guarantee Met)' : 'UNDERSIZED (Risk of RPO Drift)'],
+      ['CDP Checkpoint Journal Overhead', `${calculations.journalOverheadTB} TB`, `${journalRetentionDays}-day continuous rollback checkpoints`]
     ];
 
     doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
     doc.text('TECHNICAL PARAMETER', margin + 3, y + 4);
     doc.text('CALCULATED SPECIFICATION', margin + 70, y + 4);
-    doc.text('ARCHITECTURAL CONTEXT', margin + 120, y + 4);
-    y += 6;
+    doc.text('ARCHITECTURAL CONTEXT & SLA IMPACT', margin + 120, y + 4);
+    y += 5.5;
 
     techRows.forEach((row, idx) => {
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, y, pageWidth - (margin * 2), 5.5, 'F');
-      }
+      doc.setFillColor(idx % 2 === 1 ? 248 : 255, idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 252 : 255);
+      doc.rect(margin, y, contentWidth, 5, 'F');
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(30, 41, 59);
-      doc.text(row[0], margin + 3, y + 4);
+      doc.text(row[0], margin + 3, y + 3.8);
       doc.setFont('helvetica', 'bold');
-      doc.text(row[1], margin + 70, y + 4);
+      doc.text(row[1], margin + 70, y + 3.8);
       doc.setFont('helvetica', 'normal');
-      doc.text(row[2], margin + 120, y + 4);
-      y += 5.5;
+      doc.text(row[2], margin + 120, y + 3.8);
+      y += 5;
     });
 
-    y += 8;
-
-    // Table 2: Disaster Recovery Runbook Boot Sequence
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42);
-    doc.text('2. Automated Disaster Recovery Runbook Sequencing', margin, y);
-    y += 5;
-
-    const runbookStages = [
-      ['Priority Group 1 (Core Identity)', 'Domain Controllers (AD/DNS), NTP, Vault, CA', 'Immediate boot (0m RTO)'],
-      ['Priority Group 2 (Database Tier)', 'SQL Server AlwaysOn, Oracle RAC, PostgreSQL replicas', '+3 min delay (storage validation)'],
-      ['Priority Group 3 (App/Middleware)', 'WebSphere, IIS, Tomcat, Kubernetes microservices', '+5 min delay (DB dependency)'],
-      ['Priority Group 4 (Web & Ingress)', 'Reverse proxies, Avi ALB, NSX Tier-1 virtual servers', '+2 min delay (health check PASS)']
-    ];
-
-    doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('BOOT PRIORITY TIER', margin + 3, y + 4);
-    doc.text('TARGET WORKLOAD ASSETS', margin + 60, y + 4);
-    doc.text('ORCHESTRATION DELAY', margin + 130, y + 4);
-    y += 6;
-
-    runbookStages.forEach((stage, idx) => {
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, y, pageWidth - (margin * 2), 5.5, 'F');
-      }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(14, 116, 144);
-      doc.text(stage[0], margin + 3, y + 4);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(30, 41, 59);
-      doc.text(stage[1], margin + 60, y + 4);
-      doc.text(stage[2], margin + 130, y + 4);
-      y += 5.5;
-    });
-
-    y += 8;
-
-    // Sign-off Footer
+    // Page 1 Footer
     doc.setDrawColor(203, 213, 225);
-    doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
-
+    doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('CONFIDENTIAL // ISSUED FOR PRODUCTION ARCHITECTURE VALIDATION', margin, pageHeight - 13);
-    doc.text('Zaboraa Technologies · Cloud Infrastructure Engineering Practice', pageWidth - margin - 75, pageHeight - 13);
+    doc.text('Page 1 of 2 // Zaboraa Technologies Enterprise BCDR Advisory', margin, pageHeight - 11);
+    doc.text('CONFIDENTIAL // ISSUED FOR ARCHITECTURAL CERTIFICATION', pageWidth - margin - 75, pageHeight - 11);
+
+    // ==========================================
+    // PAGE 2: RUNBOOK ORCHESTRATION & SIGN-OFF
+    // ==========================================
+    doc.addPage();
+
+    // Page 2 Header Bar
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 24, 'F');
+    doc.setFillColor(6, 182, 212);
+    doc.rect(0, 23, pageWidth, 1.2, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ZABORAA TECHNOLOGIES · RUNBOOK ORCHESTRATION', margin, 11);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text('AUTOMATED DISASTER RECOVERY BOOT SEQUENCE & SIGN-OFF DOSSIER', margin, 17);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(6, 182, 212);
+    doc.text('ENGINE: ' + engine.name.toUpperCase(), pageWidth - margin - 50, 14);
+
+    y = 33;
+
+    // Section 3: Runbook Sequence
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('3. Automated Disaster Recovery Runbook Boot Sequence', margin, y);
+    y += 5;
+
+    const runbookStages = [
+      ['Priority Tier 1 (Core Identity & DNS)', 'Domain Controllers (AD/DNS), NTP, HashiCorp Vault, PKI CA', '0 min (Immediate boot)', 'Automated DNS sync & ticket renewal verification'],
+      ['Priority Tier 2 (Database Cluster)', 'SQL Server AlwaysOn, Oracle RAC, PostgreSQL Replicas', '+3 min delay', 'Mount supplemental storage, verify clean journal lock'],
+      ['Priority Tier 3 (Application & Middleware)', 'WebSphere, IIS Servers, Tomcat Clusters, Microservices', '+5 min delay', 'Wait for DB port 1433/1521 listener ready signal'],
+      ['Priority Tier 4 (Ingress & Web Presentation)', 'Avi ALB VIPs, NSX-T Tier-1 Gateways, NGINX Reverse Proxies', '+2 min delay', 'Route convergence validation, SSL handshake check'],
+      ['Priority Tier 5 (Background Batch & Analytics)', 'Batch processing workers, ETL pipelines, non-critical reporting', '+10 min delay', 'Deferred startup ensuring primary production SLA']
+    ];
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text('RECOVERY BOOT TIER', margin + 3, y + 4);
+    doc.text('PROTECTED WORKLOAD ASSETS', margin + 55, y + 4);
+    doc.text('BOOT DELAY', margin + 115, y + 4);
+    doc.text('VALIDATION SCRIPT / PROBE', margin + 140, y + 4);
+    y += 5.5;
+
+    runbookStages.forEach((stage, idx) => {
+      doc.setFillColor(idx % 2 === 1 ? 248 : 255, idx % 2 === 1 ? 250 : 255, idx % 2 === 1 ? 252 : 255);
+      doc.rect(margin, y, contentWidth, 6, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(14, 116, 144);
+      doc.text(stage[0], margin + 3, y + 4.2);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 41, 59);
+      doc.text(stage[1], margin + 55, y + 4.2);
+      doc.text(stage[2], margin + 115, y + 4.2);
+      doc.setFont('helvetica', 'italic');
+      doc.text(stage[3], margin + 140, y + 4.2);
+      y += 6;
+    });
+
+    y += 9;
+
+    // Section 4: RTO Phase Breakdown
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('4. Detailed Recovery Time Objective (RTO) Phase Timeline', margin, y);
+    y += 5;
+
+    const rtoPhases = [
+      ['Phase 1: Incident Detection & Quorum Arbitration', '3 Minutes', 'Automated heartbeat failure detection, SRM quorum verification, split-brain fence'],
+      ['Phase 2: Standby SDDC Auto-Scaling & Storage Mount', `${calculations.strategyRtoMin} Minutes`, `Scale standby nodes from ${calculations.standbyNodes} to target capacity, attach ANF/FSx datastores`],
+      ['Phase 3: VM Power-On Sequencing & Dependency Gaps', `${calculations.vmBootRtoMin} Minutes`, `Parallelized power-on across 5 priority tiers (${protectedVMs} protected VMs)`],
+      ['Phase 4: Network Re-routing & Health Validation', '4 Minutes', 'BGP route advertisement, NSX-T gateway active-active path stabilization, synthetic checks'],
+      ['TOTAL END-TO-END RECOVERY DURATION', `${calculations.totalEstimatedRtoMin} Minutes`, 'Full operational readiness confirmed with zero manual administrator intervention']
+    ];
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('RTO EXECUTION PHASE', margin + 3, y + 4);
+    doc.text('ALLOCATED DURATION', margin + 75, y + 4);
+    doc.text('ORCHESTRATION ACTIVITIES & AUTOMATION HOOKS', margin + 115, y + 4);
+    y += 5.5;
+
+    rtoPhases.forEach((phase, idx) => {
+      const isTotal = idx === rtoPhases.length - 1;
+      doc.setFillColor(isTotal ? 224 : (idx % 2 === 1 ? 248 : 255), isTotal ? 242 : (idx % 2 === 1 ? 250 : 255), isTotal ? 254 : (idx % 2 === 1 ? 252 : 255));
+      doc.rect(margin, y, contentWidth, 6, 'F');
+      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+      doc.setFontSize(isTotal ? 7.5 : 6.8);
+      doc.setTextColor(isTotal ? 3 : 30, isTotal ? 105 : 41, isTotal ? 161 : 59);
+      doc.text(phase[0], margin + 3, y + 4.2);
+      doc.setFont('helvetica', 'bold');
+      doc.text(phase[1], margin + 75, y + 4.2);
+      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+      doc.text(phase[2], margin + 115, y + 4.2);
+      y += 6;
+    });
+
+    y += 11;
+
+    // Section 5: Architectural Certification & Executive Sign-off
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('5. Architectural Certification & Enterprise Sign-Off', margin, y);
+    y += 5;
+
+    const boxW = (contentWidth - 6) / 2;
+    const boxH = 34;
+
+    // Lead Architect Box
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, boxW, boxH, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('PREPARED & CERTIFIED BY:', margin + 4, y + 5.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Wasim Sayyed', margin + 4, y + 11);
+    doc.text('Lead Hybrid Cloud Architect & Infrastructure Advisory', margin + 4, y + 15);
+    doc.text(`Status: PRODUCTION VALIDATED`, margin + 4, y + 19);
+
+    doc.setDrawColor(148, 163, 184);
+    doc.line(margin + 4, y + 27, margin + boxW - 10, y + 27);
+    doc.setFontSize(6);
+    doc.text('Digital Signature / Cryptographic Seal', margin + 4, y + 31);
+
+    // VP Infrastructure Sign-Off Box
+    const box2X = margin + boxW + 6;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(box2X, y, boxW, boxH, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('EXECUTIVE STAKEHOLDER APPROVAL:', box2X + 4, y + 5.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(71, 85, 105);
+    doc.text('VP / Global Infrastructure Director', box2X + 4, y + 11);
+    doc.text('Enterprise BCDR Governance Committee', box2X + 4, y + 15);
+    doc.text('Approval Status: APPROVED FOR DEPLOYMENT', box2X + 4, y + 19);
+
+    doc.setDrawColor(148, 163, 184);
+    doc.line(box2X + 4, y + 27, box2X + boxW - 10, y + 27);
+    doc.setFontSize(6);
+    doc.text('Authorized Enterprise Signatory', box2X + 4, y + 31);
+
+    // Page 2 Footer
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, pageHeight - 16, pageWidth - margin, pageHeight - 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Page 2 of 2 // Zaboraa Technologies Enterprise BCDR Advisory', margin, pageHeight - 11);
+    doc.text('CONFIDENTIAL // ISSUED FOR ARCHITECTURAL CERTIFICATION', pageWidth - margin - 75, pageHeight - 11);
 
     doc.save(`Zaboraa_Executive_DR_Report_${engine.id.toUpperCase()}.pdf`);
   };

@@ -119,11 +119,12 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
   };
 
   const handleOpenFullScreen = () => {
+    if (onEnlarge) {
+      onEnlarge();
+      return;
+    }
     setIsFullScreen(true);
     setZoomLevel(1);
-    if (onEnlarge) {
-      // Optional parent callback notification
-    }
   };
 
   const handleCloseFullScreen = () => {

@@ -15,20 +15,27 @@ import {
   Maximize2,
   CheckCircle2,
   Calendar,
-  X,
   Sparkles,
   Edit3,
   Info
 } from 'lucide-react';
+import { resolveMediaUrl } from '../data/mediaAssets';
+import { SubsectionDiagramCardsGallery } from './SubsectionDiagramCardsGallery';
 
 export const DedicatedPlatformsShowcase: React.FC = () => {
-  const { siteConfig, setActiveEditPlatformId, setIsBriefingModalOpen, isAdmin } = useCustomization();
+  const {
+    siteConfig,
+    setActiveEditPlatformId,
+    setIsBriefingModalOpen,
+    isAdmin,
+    togglePlatformEnabled
+  } = useCustomization();
   const [mediaModes, setMediaModes] = useState<Record<string, 'image' | 'video'>>({});
   
   // Track selected active subsection design per platform showcase
   const [activeDesignMap, setActiveDesignMap] = useState<Record<string, string>>({});
 
-  const showcases = siteConfig.platformShowcases || [];
+  const showcases = (siteConfig.platformShowcases || []).filter(item => isAdmin || item.enabled !== false);
 
   const platformMeta: Record<string, {
     icon: React.ReactNode;
@@ -253,15 +260,29 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
 
                     {/* Section Edit Modal Trigger (Visible to Admin Only) */}
                     {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveEditPlatformId(item.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors shadow-sm"
-                        title="Edit general section settings"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Edit Section</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => togglePlatformEnabled(item.id)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors shadow-sm ${
+                            item.enabled !== false
+                              ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900'
+                              : 'bg-rose-950/80 border-rose-500/40 text-rose-300 hover:bg-rose-900'
+                          }`}
+                          title={item.enabled !== false ? 'Click to disable discipline' : 'Click to enable discipline'}
+                        >
+                          <span>{item.enabled !== false ? 'Active' : 'Disabled'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveEditPlatformId(item.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors shadow-sm"
+                          title="Edit general section settings"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Edit Discipline</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -437,6 +458,22 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Subsection Diagrams & Architecture Variations Gallery */}
+                {designs.length > 0 && (
+                  <div className="pt-6 border-t border-slate-800/80">
+                    <SubsectionDiagramCardsGallery
+                      platformId={item.id}
+                      platformName={item.platform}
+                      designs={designs}
+                      activeDesignId={activeDesign?.id}
+                      onSelectDesign={(designId) => handleSelectDesign(item.id, designId)}
+                      onEditDesign={isAdmin ? () => {
+                        setActiveEditPlatformId(item.id);
+                      } : undefined}
+                    />
+                  </div>
+                )}
               </div>
             </section>
           );

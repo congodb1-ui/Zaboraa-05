@@ -47,6 +47,8 @@ export const CustomizerDrawer: React.FC = () => {
     setActiveEditPlatformId,
     setFeaturedVideoId,
     updateGeneralInfo,
+    togglePlatformEnabled,
+    toggleDesignEnabled,
     updateHero,
     addDiagram,
     deleteDiagram,
@@ -1144,6 +1146,13 @@ export const CustomizerDrawer: React.FC = () => {
                             <span className="text-[10px] text-cyan-400 font-mono bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800">
                               {p.badge}
                             </span>
+                            <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase ${
+                              p.enabled !== false
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                : 'bg-rose-950 text-rose-300 border border-rose-800'
+                            }`}>
+                              {p.enabled !== false ? 'Active' : 'Disabled'}
+                            </span>
                           </div>
                           <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
                             {p.title}
@@ -1151,13 +1160,30 @@ export const CustomizerDrawer: React.FC = () => {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveEditPlatformId(p.id)}
-                        className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold rounded-lg text-xs flex items-center gap-1 transition-colors whitespace-nowrap"
-                      >
-                        <span>Edit Section</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            togglePlatformEnabled(p.id);
+                            showNotification(`Discipline ${p.platform} ${p.enabled === false ? 'enabled' : 'disabled'}!`);
+                          }}
+                          className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-lg border transition-colors cursor-pointer ${
+                            p.enabled !== false
+                              ? 'bg-emerald-950 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900'
+                              : 'bg-rose-950 border-rose-500/50 text-rose-300 hover:bg-rose-900'
+                          }`}
+                          title={p.enabled !== false ? 'Click to disable discipline' : 'Click to enable discipline'}
+                        >
+                          {p.enabled !== false ? 'Active' : 'Disabled'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveEditPlatformId(p.id)}
+                          className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold rounded-lg text-xs flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          <span>Edit</span>
+                        </button>
+                      </div>
                     </div>
 
                     <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
@@ -1165,7 +1191,7 @@ export const CustomizerDrawer: React.FC = () => {
                     </p>
 
                     <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Media Mode: <span className="text-slate-300 uppercase font-mono">{p.mediaType || 'Image'}</span></span>
+                      <span>Subsections: <span className="text-cyan-400 font-mono font-semibold">{p.designs?.length || 0} Modules</span></span>
                       <span>{p.keyDeliverables?.length || 0} Key Deliverables</span>
                     </div>
                   </div>

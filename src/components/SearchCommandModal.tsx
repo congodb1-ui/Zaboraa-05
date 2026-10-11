@@ -51,6 +51,17 @@ export const SearchCommandModal: React.FC = () => {
     });
   };
 
+  const deleteRecentSearchItem = (e: React.MouseEvent, itemToRemove: string) => {
+    e.stopPropagation();
+    setRecentSearches(prev => {
+      const updated = prev.filter(item => item !== itemToRemove);
+      try {
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
   const clearRecentSearches = (e: React.MouseEvent) => {
     e.stopPropagation();
     setRecentSearches([]);
@@ -68,6 +79,14 @@ export const SearchCommandModal: React.FC = () => {
     if (e.key === 'Enter' && query.trim()) {
       saveRecentSearch(query.trim());
     }
+  };
+
+  const handleNavigateWithQuery = (action: () => void) => {
+    if (query.trim()) {
+      saveRecentSearch(query.trim());
+    }
+    setIsSearchOpen(false);
+    action();
   };
 
   if (!isSearchOpen) return null;
@@ -174,15 +193,27 @@ export const SearchCommandModal: React.FC = () => {
 
               <div className="flex flex-wrap gap-2 pt-0.5">
                 {recentSearches.map((term, idx) => (
-                  <button
+                  <div
                     key={idx}
-                    type="button"
-                    onClick={() => handleSelectRecent(term)}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-white border border-slate-800 hover:border-cyan-500/50 transition-all font-mono text-xs flex items-center gap-1.5 cursor-pointer shadow-sm group"
+                    className="inline-flex items-center rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/50 transition-all font-mono text-xs shadow-sm group overflow-hidden"
                   >
-                    <Search className="w-3 h-3 text-cyan-400/70 group-hover:text-cyan-300" />
-                    <span>{term}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectRecent(term)}
+                      className="px-2.5 py-1.5 text-cyan-300 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Search className="w-3 h-3 text-cyan-400/70 group-hover:text-cyan-300" />
+                      <span>{term}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => deleteRecentSearchItem(e, term)}
+                      className="px-1.5 py-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer border-l border-slate-800"
+                      title={`Remove "${term}" from history`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -222,10 +253,7 @@ export const SearchCommandModal: React.FC = () => {
                 {engineeringTools.map((tool, idx) => (
                   <button
                     key={idx}
-                    onClick={() => {
-                      setIsSearchOpen(false);
-                      navigate(tool.path);
-                    }}
+                    onClick={() => handleNavigateWithQuery(() => navigate(tool.path))}
                     className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-cyan-500/30 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
@@ -254,10 +282,7 @@ export const SearchCommandModal: React.FC = () => {
                 {matchingPlatforms.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => {
-                      setIsSearchOpen(false);
-                      navigate(`/disciplines/${p.id}`);
-                    }}
+                    onClick={() => handleNavigateWithQuery(() => navigate(`/disciplines/${p.id}`))}
                     className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
@@ -286,11 +311,10 @@ export const SearchCommandModal: React.FC = () => {
                 {matchingDiagrams.map(d => (
                   <button
                     key={d.id}
-                    onClick={() => {
-                      setIsSearchOpen(false);
+                    onClick={() => handleNavigateWithQuery(() => {
                       setSelectedDiagram(d);
                       navigate('/blueprints');
-                    }}
+                    })}
                     className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
@@ -319,11 +343,10 @@ export const SearchCommandModal: React.FC = () => {
                 {matchingTutorials.map(t => (
                   <button
                     key={t.id}
-                    onClick={() => {
-                      setIsSearchOpen(false);
+                    onClick={() => handleNavigateWithQuery(() => {
                       setSelectedTutorial(t);
                       navigate('/resources/tutorials');
-                    }}
+                    })}
                     className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
@@ -352,11 +375,10 @@ export const SearchCommandModal: React.FC = () => {
                 {matchingVideos.map(v => (
                   <button
                     key={v.id}
-                    onClick={() => {
-                      setIsSearchOpen(false);
+                    onClick={() => handleNavigateWithQuery(() => {
                       setSelectedVideo(v);
                       navigate('/resources/videos');
-                    }}
+                    })}
                     className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>

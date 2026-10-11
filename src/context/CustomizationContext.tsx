@@ -76,9 +76,13 @@ interface CustomizationContextType {
   updateFounderPhoto: (portraitImage: string, photoStyle?: PhotoStyle) => void;
   setFeaturedVideoId: (id: string) => void;
   updatePlatformShowcase: (id: string, updated: Partial<PlatformShowcase>) => void;
+  addPlatformShowcase: (platform: PlatformShowcase) => void;
+  deletePlatformShowcase: (id: string) => void;
+  togglePlatformEnabled: (id: string) => void;
   addPlatformDesign: (platformId: string, design: ArchitectureDesignItem) => void;
   updatePlatformDesign: (platformId: string, designId: string, updated: Partial<ArchitectureDesignItem>) => void;
   deletePlatformDesign: (platformId: string, designId: string) => void;
+  toggleDesignEnabled: (platformId: string, designId: string) => void;
   updateHero: (hero: SiteConfig['hero']) => void;
   addDiagram: (diagram: ArchitectureDiagram) => void;
   updateDiagram: (id: string, diagram: Partial<ArchitectureDiagram>) => void;
@@ -406,6 +410,29 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  const addPlatformShowcase = (platform: PlatformShowcase) => {
+    setSiteConfig(prev => ({
+      ...prev,
+      platformShowcases: [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases), platform]
+    }));
+  };
+
+  const deletePlatformShowcase = (id: string) => {
+    setSiteConfig(prev => ({
+      ...prev,
+      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).filter(item => item.id !== id)
+    }));
+  };
+
+  const togglePlatformEnabled = (id: string) => {
+    setSiteConfig(prev => ({
+      ...prev,
+      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
+        item.id === id ? { ...item, enabled: item.enabled === false ? true : false } : item
+      )
+    }));
+  };
+
   const addPlatformDesign = (platformId: string, design: ArchitectureDesignItem) => {
     setSiteConfig(prev => ({
       ...prev,
@@ -445,6 +472,23 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           return {
             ...item,
             designs: item.designs.filter(d => d.id !== designId)
+          };
+        }
+        return item;
+      })
+    }));
+  };
+
+  const toggleDesignEnabled = (platformId: string, designId: string) => {
+    setSiteConfig(prev => ({
+      ...prev,
+      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
+        if (item.id === platformId && item.designs) {
+          return {
+            ...item,
+            designs: item.designs.map(d =>
+              d.id === designId ? { ...d, enabled: d.enabled === false ? true : false } : d
+            )
           };
         }
         return item;
@@ -590,9 +634,13 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         updateFounderPhoto,
         setFeaturedVideoId,
         updatePlatformShowcase,
+        addPlatformShowcase,
+        deletePlatformShowcase,
+        togglePlatformEnabled,
         addPlatformDesign,
         updatePlatformDesign,
         deletePlatformDesign,
+        toggleDesignEnabled,
         updateHero,
         addDiagram,
         updateDiagram,

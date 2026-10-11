@@ -82,7 +82,8 @@ export const WorkbenchHubPage: React.FC = () => {
         'WAN throughput calculator accounting for deduplication & compression',
         'Initial baseline seeding vs steady-state delta sync modeling',
         'SRM test failover non-disruptive bubble network designer',
-        'Detailed RTO breakdown for tiered recovery sequencing'
+        'Detailed RTO breakdown for tiered recovery sequencing',
+        'Formal 2-page branded executive jsPDF report & Excel export'
       ]
     },
     {

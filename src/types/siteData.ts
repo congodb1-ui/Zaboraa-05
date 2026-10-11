@@ -157,6 +157,7 @@ export interface ArchitectureDesignItem {
   mediaType?: 'image' | 'video';
   videoUrl?: string;
   components?: { name: string; role: string; details: string }[];
+  enabled?: boolean;
 }
 
 export type ThemePreset = 'default' | 'nutanix' | 'azure' | 'terminal' | 'titanium' | 'nordic';
@@ -193,6 +194,7 @@ export interface PlatformShowcase {
   keyDeliverables: string[];
   techTags: string[];
   designs?: ArchitectureDesignItem[];
+  enabled?: boolean;
 }
 
 export interface PhotoStyle {

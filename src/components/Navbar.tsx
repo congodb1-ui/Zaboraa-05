@@ -22,10 +22,13 @@ import {
   FileText,
   ExternalLink,
   FolderGit2,
-  Network
+  Network,
+  Sparkles
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
+import { CommercializationModal } from './CommercializationModal';
+import { getStoredUser, getActiveLicenseTier } from '../services/firebaseAuth';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -42,6 +45,9 @@ export const Navbar: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'disciplines' | 'tools' | 'resources' | null>(null);
+  const [isCommercialModalOpen, setIsCommercialModalOpen] = useState(false);
+  const authUser = getStoredUser();
+  const licenseTier = getActiveLicenseTier();
 
   // Close dropdowns on outside click or navigation
   const navRef = useRef<HTMLDivElement>(null);
@@ -415,6 +421,25 @@ export const Navbar: React.FC = () => {
             </button>
           )}
 
+          {/* Commercialization & Google Account Trigger */}
+          <button
+            onClick={() => setIsCommercialModalOpen(true)}
+            className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              authUser
+                ? 'bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-200'
+                : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="Commercialize tools, pricing tiers, and Google Authentication"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="truncate max-w-[120px]">{authUser ? authUser.displayName?.split(' ')[0] : 'Sign In / Pro'}</span>
+            <span className={`text-[9px] font-mono px-1 py-0.2 rounded uppercase font-bold ${
+              licenseTier === 'pro' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+            }`}>
+              {licenseTier === 'pro' ? 'PRO' : 'FREE'}
+            </span>
+          </button>
+
           {/* Primary CTA Button: Book Briefing */}
           <button
             onClick={() => setIsBriefingModalOpen(true)}
@@ -508,6 +533,22 @@ export const Navbar: React.FC = () => {
             >
               About Principal Architect
             </NavLink>
+
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setIsCommercialModalOpen(true);
+              }}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span>Commercialize Tools & Sign Up</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-900 text-cyan-200 uppercase font-bold">
+                {licenseTier === 'pro' ? 'PRO' : 'FREE'}
+              </span>
+            </button>
           </div>
 
           <div className="pt-2 border-t border-slate-800 text-xs space-y-2">
@@ -527,6 +568,13 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Commercialization & Google Auth Modal */}
+      <CommercializationModal
+        isOpen={isCommercialModalOpen}
+        onClose={() => setIsCommercialModalOpen(false)}
+        onOpenBriefing={() => setIsBriefingModalOpen(true)}
+      />
     </header>
   );
 };

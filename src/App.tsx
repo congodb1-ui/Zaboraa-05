@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CustomizerDrawer } from './components/CustomizerDrawer';
@@ -10,6 +11,7 @@ import { ScheduleBriefingModal } from './components/ScheduleBriefingModal';
 import { SearchCommandModal } from './components/SearchCommandModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
+import { CommercializeModal } from './components/CommercializeModal';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -250,16 +252,19 @@ const MainLayout: React.FC = () => {
       <SearchCommandModal />
       <AdminLoginModal />
       <WatermarkSettingsModal />
+      <CommercializeModal />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <CustomizationProvider>
-      <BrowserRouter>
-        <MainLayout />
-      </BrowserRouter>
-    </CustomizationProvider>
+    <AuthProvider>
+      <CustomizationProvider>
+        <BrowserRouter>
+          <MainLayout />
+        </BrowserRouter>
+      </CustomizationProvider>
+    </AuthProvider>
   );
 }

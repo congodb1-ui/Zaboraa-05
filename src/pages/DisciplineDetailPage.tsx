@@ -17,10 +17,18 @@ import {
 } from 'lucide-react';
 import { resolveMediaUrl } from '../data/mediaAssets';
 import { InteractiveHotspotImage } from '../components/InteractiveHotspotImage';
+import { SubsectionDiagramCardsGallery } from '../components/SubsectionDiagramCardsGallery';
 
 export const DisciplineDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { siteConfig, setIsBriefingModalOpen, isAdmin, setActiveEditPlatformId, setIsCustomizerOpen } = useCustomization();
+  const {
+    siteConfig,
+    setIsBriefingModalOpen,
+    isAdmin,
+    setActiveEditPlatformId,
+    setIsCustomizerOpen,
+    togglePlatformEnabled
+  } = useCustomization();
 
   // Dynamically find discipline from siteConfig.platformShowcases without hardcoding
   const platform = (siteConfig.platformShowcases || []).find(p => p.id.toLowerCase() === id?.toLowerCase());
@@ -59,6 +67,27 @@ export const DisciplineDetailPage: React.FC = () => {
     );
   }
 
+  // Handle disabled discipline for regular users
+  if (platform.enabled === false && !isAdmin) {
+    return (
+      <div className="py-20 px-4 max-w-2xl mx-auto text-center space-y-6">
+        <div className="p-3 w-12 h-12 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold">
+          !
+        </div>
+        <h1 className="text-2xl font-bold text-white">Discipline Offline</h1>
+        <p className="text-slate-400 text-sm">
+          The <span className="text-cyan-300 font-semibold">{platform.title}</span> architecture discipline has been temporarily taken offline by site administrators for maintenance.
+        </p>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-400 text-slate-950 font-bold text-xs"
+        >
+          <span>Browse Available Disciplines</span>
+        </Link>
+      </div>
+    );
+  }
+
   const designs = platform.designs && platform.designs.length > 0 ? platform.designs : [
     {
       id: `${platform.id}-main`,
@@ -88,6 +117,23 @@ export const DisciplineDetailPage: React.FC = () => {
         <span className="text-cyan-300 font-semibold">{platform.platform}</span>
       </div>
 
+      {/* Admin Notice if Discipline is Disabled */}
+      {isAdmin && platform.enabled === false && (
+        <div className="p-4 rounded-xl bg-amber-950/80 border border-amber-600/60 flex items-center justify-between text-amber-200 shadow-xl">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="font-bold">ADMIN NOTICE: This discipline is currently DISABLED and hidden from regular visitors.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => togglePlatformEnabled(platform.id)}
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold cursor-pointer transition-colors shadow-md"
+          >
+            Enable Discipline Now
+          </button>
+        </div>
+      )}
+
       {/* Hero Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-800 pb-8">
         <div className="space-y-3 max-w-3xl">
@@ -98,6 +144,11 @@ export const DisciplineDetailPage: React.FC = () => {
             <span className="text-xs font-mono text-slate-400">
               {platform.platform}
             </span>
+            {platform.enabled === false && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800 font-bold">
+                [DISABLED]
+              </span>
+            )}
             {isAdmin && (
               <button
                 onClick={() => {
@@ -264,6 +315,22 @@ export const DisciplineDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Subsection Diagrams & Architecture Variations Gallery */}
+      <SubsectionDiagramCardsGallery
+        platformId={platform.id}
+        platformName={platform.platform}
+        designs={designs}
+        activeDesignId={currentDesign.id}
+        onSelectDesign={(designId) => {
+          const foundIdx = designs.findIndex(d => d.id === designId);
+          if (foundIdx >= 0) setActiveDesignIndex(foundIdx);
+        }}
+        onEditDesign={isAdmin ? () => {
+          setActiveEditPlatformId(platform.id);
+          setIsCustomizerOpen(true);
+        } : undefined}
+      />
     </div>
   );
 };
