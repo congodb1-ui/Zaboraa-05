@@ -28,6 +28,7 @@ import { RoadmapPage } from './pages/RoadmapPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { CaseStudiesPage } from './pages/CaseStudiesPage';
 import { AboutPage } from './pages/AboutPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
 import {
   Sliders,
@@ -161,6 +162,7 @@ const MainLayout: React.FC = () => {
         <Routes>
           {/* 1. Home Page Overview */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
           {/* 2. Dynamic Standalone Discipline Page for EVERY item in platformShowcases */}
           <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />

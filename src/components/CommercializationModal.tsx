@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import {
   X,
   CheckCircle2,
@@ -18,14 +18,9 @@ import {
   Building2,
   DollarSign
 } from 'lucide-react';
-import {
-  AuthUserProfile,
-  signInWithGoogle,
-  signOutUser,
-  getStoredUser,
-  getActiveLicenseTier,
-  activateLicenseKey
-} from '../services/firebaseAuth';
+import { useAuth } from '../context/AuthContext';
+import { EmailAuthForm } from './auth/EmailAuthForm';
+import { LicenseKeyForm } from './auth/LicenseKeyForm';
 
 interface CommercializationModalProps {
   isOpen: boolean;
@@ -38,45 +33,10 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
   onClose,
   onOpenBriefing
 }) => {
-  const [currentUser, setCurrentUser] = useState<AuthUserProfile | null>(getStoredUser);
-  const [licenseTier, setLicenseTier] = useState<'free' | 'pro' | 'enterprise'>(getActiveLicenseTier);
-  const [keyInput, setKeyInput] = useState('');
-  const [keyMessage, setKeyMessage] = useState<{ text: string; success: boolean } | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { user: currentUser, subscriptionTier: licenseTier, signOut, downgradeToFree } = useAuth();
+  const licenseInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
-
-  const handleGoogleSignIn = async () => {
-    setIsSigningIn(true);
-    try {
-      const user = await signInWithGoogle();
-      setCurrentUser(user);
-      setLicenseTier(getActiveLicenseTier());
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOutUser();
-    setCurrentUser(null);
-    setLicenseTier('free');
-  };
-
-  const handleActivateKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyInput.trim()) return;
-    const ok = activateLicenseKey(keyInput);
-    if (ok) {
-      setKeyMessage({ text: 'License Key Activated! Enterprise Pro features are now unlocked.', success: true });
-      setLicenseTier('pro');
-      setCurrentUser(getStoredUser());
-    } else {
-      setKeyMessage({ text: 'Invalid license key. Try demo key: ZABORAA-PRO-2026', success: false });
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-md p-4 sm:p-6 lg:p-10 flex items-center justify-center animate-in fade-in duration-150">
@@ -93,11 +53,11 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                   Tool Commercialization & Enterprise Access
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 uppercase">
-                  {licenseTier === 'pro' ? 'PRO ARCHITECT' : 'COMMUNITY FREE'}
+                  {licenseTier === 'enterprise' ? 'ENTERPRISE' : licenseTier === 'pro' ? 'PRO ARCHITECT' : 'COMMUNITY FREE'}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Monetize your VMware cloud engineering tools, manage client licenses, and sign up with Google Authentication.
+                Monetize your VMware cloud engineering tools, and manage client licenses.
               </p>
             </div>
           </div>
@@ -110,12 +70,12 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
           </button>
         </div>
 
-        {/* Section 1: Google Authentication Card */}
+        {/* Section 1: Account Card */}
         <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-white font-semibold">
               <UserCheck className="w-4 h-4 text-cyan-400" />
-              <span>Google Account Authentication</span>
+              <span>Account</span>
             </div>
             {currentUser ? (
               <p className="text-xs text-slate-400">
@@ -123,39 +83,27 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
               </p>
             ) : (
               <p className="text-xs text-slate-400">
-                Sign up with your enterprise Google Workspace or Gmail account to sync assessments, save custom blueprints, and unlock pro exports.
+                Sign up with your work email to sync assessments, save custom blueprints, and unlock pro exports.
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {currentUser ? (
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                <span>Sign Out</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={isSigningIn}
-                className="px-4 py-2.5 rounded-lg bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center gap-2.5 transition-all shadow-md cursor-pointer hover:scale-105"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>{isSigningIn ? 'Connecting...' : 'Sign In with Google'}</span>
-              </button>
-            )}
-          </div>
+          {currentUser && (
+            <button
+              type="button"
+              onClick={signOut}
+              className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>Sign Out</span>
+            </button>
+          )}
         </div>
+        {!currentUser && (
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <EmailAuthForm />
+          </div>
+        )}
 
         {/* Section 2: Commercial Pricing Tiers */}
         <div className="space-y-3">
@@ -179,8 +127,9 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
               </div>
               <button
                 type="button"
-                disabled={licenseTier === 'free'}
-                className="w-full py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 font-semibold text-xs cursor-default"
+                disabled={licenseTier === 'free' || !currentUser}
+                onClick={() => void downgradeToFree()}
+                className="w-full py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 font-semibold text-xs enabled:hover:text-white enabled:cursor-pointer disabled:cursor-default"
               >
                 {licenseTier === 'free' ? 'Current Active Tier' : 'Downgrade'}
               </button>
@@ -207,17 +156,16 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  activateLicenseKey('ZABORAA-PRO-2026');
-                  setLicenseTier('pro');
-                  setKeyMessage({ text: 'Enterprise Pro tier unlocked!', success: true });
+                  licenseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  licenseInputRef.current?.focus();
                 }}
                 className={`w-full py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                  licenseTier === 'pro'
+                  licenseTier !== 'free'
                     ? 'bg-cyan-950 border border-cyan-500 text-cyan-300'
                     : 'bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-md'
                 }`}
               >
-                {licenseTier === 'pro' ? 'Active Pro License' : 'Upgrade to Pro ($99/mo)'}
+                {licenseTier !== 'free' ? 'Active Pro License' : 'Upgrade to Pro ($99/mo)'}
               </button>
             </div>
 
@@ -280,38 +228,8 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
         </div>
 
         {/* Section 4: License Key Activation */}
-        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-white flex items-center gap-2">
-              <Key className="w-4 h-4 text-amber-400" />
-              <span>Activate Enterprise License Key</span>
-            </span>
-            <span className="text-[10px] font-mono text-slate-400">Demo Key: ZABORAA-PRO-2026</span>
-          </div>
-
-          <form onSubmit={handleActivateKey} className="flex gap-2">
-            <input
-              type="text"
-              value={keyInput}
-              onChange={e => setKeyInput(e.target.value)}
-              placeholder="Enter license key (e.g. ZABORAA-PRO-2026)"
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-white font-mono text-xs uppercase"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold rounded-lg text-xs cursor-pointer shadow-sm"
-            >
-              Activate Key
-            </button>
-          </form>
-
-          {keyMessage && (
-            <div className={`p-2.5 rounded-lg border text-xs font-mono ${
-              keyMessage.success ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300' : 'bg-rose-950/80 border-rose-500/60 text-rose-300'
-            }`}>
-              {keyMessage.text}
-            </div>
-          )}
+        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+          <LicenseKeyForm inputRef={licenseInputRef} />
         </div>
       </div>
     </div>

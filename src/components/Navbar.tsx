@@ -28,7 +28,7 @@ import {
 import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
 import { CommercializationModal } from './CommercializationModal';
-import { getStoredUser, getActiveLicenseTier } from '../services/firebaseAuth';
+import { useAuth } from '../context/AuthContext';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -46,8 +46,7 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'disciplines' | 'tools' | 'resources' | null>(null);
   const [isCommercialModalOpen, setIsCommercialModalOpen] = useState(false);
-  const authUser = getStoredUser();
-  const licenseTier = getActiveLicenseTier();
+  const { user: authUser, subscriptionTier: licenseTier } = useAuth();
 
   // Close dropdowns on outside click or navigation
   const navRef = useRef<HTMLDivElement>(null);
@@ -429,14 +428,14 @@ export const Navbar: React.FC = () => {
                 ? 'bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-200'
                 : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white'
             }`}
-            title="Commercialize tools, pricing tiers, and Google Authentication"
+            title="Commercialize tools, pricing tiers, and account sign-in"
           >
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             <span className="truncate max-w-[120px]">{authUser ? authUser.displayName?.split(' ')[0] : 'Sign In / Pro'}</span>
             <span className={`text-[9px] font-mono px-1 py-0.2 rounded uppercase font-bold ${
-              licenseTier === 'pro' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+              licenseTier !== 'free' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-400'
             }`}>
-              {licenseTier === 'pro' ? 'PRO' : 'FREE'}
+              {licenseTier.toUpperCase()}
             </span>
           </button>
 
@@ -546,7 +545,7 @@ export const Navbar: React.FC = () => {
                 <span>Commercialize Tools & Sign Up</span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-900 text-cyan-200 uppercase font-bold">
-                {licenseTier === 'pro' ? 'PRO' : 'FREE'}
+                {licenseTier.toUpperCase()}
               </span>
             </button>
           </div>
