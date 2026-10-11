@@ -40,6 +40,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from './data/mediaAssets';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Scroll to top automatically on route changes
 const ScrollToTop: React.FC = () => {
@@ -259,6 +260,7 @@ export default function App() {
     <CustomizationProvider>
       <BrowserRouter>
         <MainLayout />
+        <SpeedInsights />
       </BrowserRouter>
     </CustomizationProvider>
   );
